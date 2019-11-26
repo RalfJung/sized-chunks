@@ -74,13 +74,23 @@ pub struct InlineArray<A, T> {
     phantom: PhantomData<A>,
 }
 
+const fn capacity(host_size: usize, header_size: usize, element_size: usize) -> usize {
+    #[cfg(supports_features)]
+    {
+        if element_size == 0 {
+            panic!("InlineArray<A, T> cannot accept an A of size 0");
+        }
+    }
+    (host_size - header_size) / element_size
+}
+
 impl<A, T> InlineArray<A, T> {
     const HOST_SIZE: usize = mem::size_of::<T>();
     const ELEMENT_SIZE: usize = mem::size_of::<A>();
     const HEADER_SIZE: usize = mem::size_of::<usize>();
 
     /// The maximum number of elements the `InlineArray` can hold.
-    pub const CAPACITY: usize = (Self::HOST_SIZE - Self::HEADER_SIZE) / Self::ELEMENT_SIZE;
+    pub const CAPACITY: usize = capacity(Self::HOST_SIZE, Self::HEADER_SIZE, Self::ELEMENT_SIZE);
 
     #[inline]
     #[must_use]

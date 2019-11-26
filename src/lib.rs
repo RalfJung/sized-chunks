@@ -73,6 +73,7 @@
 #![deny(nonstandard_style)]
 #![warn(unreachable_pub, missing_docs)]
 #![cfg_attr(test, deny(warnings))]
+#![cfg_attr(supports_features, feature(const_if_match, const_panic, const_fn))]
 
 pub mod inline_array;
 pub mod ring_buffer;
