@@ -258,6 +258,12 @@ where
     }
 }
 
+impl<A, N: Bits + ChunkLength<A>> Default for SparseChunk<A, N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<A, N: Bits + ChunkLength<A>> Index<usize> for SparseChunk<A, N> {
     type Output = A;
 
@@ -405,6 +411,41 @@ impl<'a, A, N: Bits + ChunkLength<A>> Iterator for Drain<A, N> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.chunk.pop()
+    }
+}
+
+#[cfg(feature = "refpool")]
+mod refpool {
+    use super::*;
+    use ::refpool::{PoolClone, PoolDefault};
+    use std::mem::MaybeUninit;
+
+    impl<A, N> PoolDefault for SparseChunk<A, N>
+    where
+        N: Bits + ChunkLength<A>,
+    {
+        unsafe fn default_uninit(target: &mut MaybeUninit<Self>) {
+            let ptr = target.as_mut_ptr();
+            let map_ptr: *mut Bitmap<N> = &mut (*ptr).map;
+            map_ptr.write(Bitmap::new());
+        }
+    }
+
+    impl<A, N> PoolClone for SparseChunk<A, N>
+    where
+        A: Clone,
+        N: Bits + ChunkLength<A>,
+    {
+        unsafe fn clone_uninit(&self, target: &mut MaybeUninit<Self>) {
+            let ptr = target.as_mut_ptr();
+            let map_ptr: *mut Bitmap<N> = &mut (*ptr).map;
+            let data_ptr: *mut _ = &mut (*ptr).data;
+            let data_ptr: *mut A = (*data_ptr).as_mut_ptr().cast();
+            map_ptr.write(Bitmap::new());
+            for index in &self.map {
+                data_ptr.add(index).write(self[index].clone());
+            }
+        }
     }
 }
 
